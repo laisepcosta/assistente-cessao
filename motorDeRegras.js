@@ -1,146 +1,193 @@
 /**
- * motorDeRegras.js
+ * motorDeRegras.js - Versão Corrigida (Alinhada ao Modelo V090326)
  * Responsável por aplicar as regras de negócio e calcular o Percentual Líquido do NSC.
  */
 
+/**
+ * Lógica de Prefixo (Regra R2/Bloco 2)
+ */
+function getPrefixoEvento(eventoInput) {
+    if (!eventoInput) return "";
+    const texto = String(eventoInput);
+    // Detecta intervalos ou listas conforme R2 
+    if (texto.match(/[-–,;&/]/) || texto.match(/( e | a )/)) {
+        return "aos eventos";
+    }
+    return "ao evento";
+}
+
+/**
+ * Formatação de Percentuais (Regra R12)
+ * Remove zeros decimais de números inteiros.
+ */
+function formatarPercentualR12(valor) {
+    if (valor === null || valor === undefined) return "0";
+    const num = parseFloat(valor);
+    if (Number.isInteger(num)) return num.toString();
+    return num.toFixed(2).replace(".", ",");
+}
+
 function preencherTemplate(template, valores) {
     if (!template) return "";
-    return template.replace(/{{(\w+)}}/g, (match, tag) => valores[tag] !== undefined ? valores[tag] : match);
+    return template.replace(/{{(\w+)}}/g, (match, tag) => {
+        return valores[tag] !== undefined ? valores[tag] : match;
+    });
 }
 
 function processarDecisoes(extracaoIA, inputsUsuario) {
-    // 1. Extração Segura dos Dados do JSON (Estrutura Atualizada)
     const inst = extracaoIA?.instrumento_cessao || {};
-    const objEfeitos = inst.ressalva_honorarios || {};
     const objEcon = inst.objeto_economico || {};
+    const objEfeitos = inst.ressalva_honorarios || {};
 
+    // 1. Inputs de Extração e Manuais
     const percInstrumento = objEcon.percentual_instrumento?.percentual_numero || 0;
-    let indicadorTotalidade = objEcon.indicador_totalidade?.abrange_totalidade || false;
+    const indicadorTotalidadeOriginal = objEcon.indicador_totalidade?.abrange_totalidade || false;
+    const inferiorEquivaleTotalidade = inputsUsuario.inferiorEquivaleTotalidade || false;
     
-    const tipoRessalva = objEfeitos.tipo || "SEM_PREVISAO";
-    const percRessalva = objEfeitos.percentual || 0;
-    const cessaoExclusiva = inst.cessao_exclusiva_honorarios?.tipo || "NAO"; 
+    const tipoRessalva = objEfeitos.tipo || "sem_previsao";
+    const percRessalva = objEfeitos.percentual_contratuais || 0;
+    const cessaoExclusiva = inst.cessao_exclusiva_honorarios?.tipo || "NAO";
 
-    // 2. Extração dos Inputs Manuais
-    const existeDestaquePrevio = inputsUsuario.existeDestaquePrevio || false; 
-    const percDestaquePrevio = inputsUsuario.percDestaquePrevio || 0;
-    
-    const deferidoNestaAnalise = inputsUsuario.deferidoNestaAnalise || false; 
-    const percDeferidoAgora = inputsUsuario.percDeferidoAgora || 0;
-    
-    const inferiorEquivaleTotalidade = inputsUsuario.inferiorEquivaleTotalidade || false; 
-    const opcaoDivergencia = inputsUsuario.opcaoDivergencia || "1"; 
-    
-    // NOVO: Pega APENAS os cedentes que você deixou marcado na tela
-    const cedentesAprovados = inputsUsuario.cedentesLegitimos || [];
+    const existeDestaquePrevio = inputsUsuario.existeDestaquePrevio || false;
+    const percDestaquePrevio = parseFloat(inputsUsuario.percDestaquePrevio) || 0;
+    const deferidoNestaAnalise = inputsUsuario.deferidoNestaAnalise || false;
+    const percDeferidoAgora = parseFloat(inputsUsuario.percDeferidoAgora) || 0;
+    const opcaoDivergencia = inputsUsuario.opcaoDivergencia || "1";
+
+    const baseIA = objEcon.base_calculo?.classificacao || "BASE_INDEFINIDA";
+
+    // 2. Cálculo da Soma de Destaques Judiciais (R9) 
+    let somaDestaquesJudiciais = 0;
+    if (existeDestaquePrevio) somaDestaquesJudiciais += percDestaquePrevio;
+    if (deferidoNestaAnalise) somaDestaquesJudiciais += percDeferidoAgora;
 
     let percentualNSC = 0;
     let observacaoNSC = "";
+    let indicadorTotalidadeEfetivo = indicadorTotalidadeOriginal || inferiorEquivaleTotalidade;
 
     // ========================================================
-    // A. LÓGICA DE CÁLCULO (NSC)
+    // A. LÓGICA DE CÁLCULO NSC (Regra R9) 
     // ========================================================
-    let encerrouCalculo = false;
 
-    // Curto-Circuito: Cessão Exclusiva de Honorários
     if (["CONTRATUAIS", "SUCUMBENCIAIS", "PERICIAIS"].includes(cessaoExclusiva)) {
-        let sufixo = cessaoExclusiva.toLowerCase();
-        percentualNSC = indicadorTotalidade ? 100 : percInstrumento;
-        observacaoNSC = indicadorTotalidade ? `Cessão exclusiva de honorários ${sufixo} (100%).` : `Cessão de honorários ${sufixo} (${percInstrumento}%).`;
-        encerrouCalculo = true;
+        // Curto-circuito Cessão Exclusiva 
+        percentualNSC = indicadorTotalidadeEfetivo ? 100 : percInstrumento;
+        observacaoNSC = `Cessão exclusiva de honorários ${cessaoExclusiva.toLowerCase()}.`;
+    } else if (indicadorTotalidadeEfetivo) {
+        // Caso TOTALIDADE 
+        let deducaoDoSaldo = 0;
+        let fraseRessalva = "";
+
+        if (tipoRessalva === "quitados_pelo_cessionario") {
+            deducaoDoSaldo = 0; 
+            fraseRessalva = "Honorários contratuais quitados pelo cessionário.";
+        } else if (tipoRessalva === "ressalva_sem_percentual") {
+            deducaoDoSaldo = somaDestaquesJudiciais > 0 ? 0 : 20; 
+            fraseRessalva = somaDestaquesJudiciais > 0 ? "Ressalva de honorários sem percentual expresso." : "Ressalva de honorários: aplicado 20% por ausência de percentual expresso.";
+        } else if (["ressalva_com_percentual_nao_cedidos", "ressalva_inclui_periciais_com_percentual_nao_cedidos"].includes(tipoRessalva)) {
+            // Lógica de Divergência R9 
+            if (somaDestaquesJudiciais > 0) {
+                if (Math.abs(percRessalva - somaDestaquesJudiciais) <= 0.02) {
+                    deducaoDoSaldo = 0; 
+                    fraseRessalva = `Ressalva coincidente (${formatarPercentualR12(percRessalva)}%).`;
+                } else {
+                    // Opções de Divergência 
+                    if (opcaoDivergencia === "1") deducaoDoSaldo = 0;
+                    else if (opcaoDivergencia === "2") deducaoDoSaldo = percRessalva;
+                    else deducaoDoSaldo = (percRessalva > somaDestaquesJudiciais) ? (percRessalva - somaDestaquesJudiciais) : 0;
+                    fraseRessalva = `Ressalva de honorários contratuais (${formatarPercentualR12(percRessalva)}%).`;
+                }
+            } else {
+                deducaoDoSaldo = percRessalva; 
+                fraseRessalva = `Ressalva de honorários contratuais (${formatarPercentualR12(percRessalva)}%).`;
+            }
+        } else {
+            deducaoDoSaldo = 0;
+            fraseRessalva = "Não há ressalva de honorários contratuais.";
+        }
+
+        percentualNSC = 100 - deducaoDoSaldo; 
+        
+        // Texto do Destaque 
+        let fraseDestaque = somaDestaquesJudiciais > 0 ? `Destaque de honorários (${formatarPercentualR12(somaDestaquesJudiciais)}%).` : "Não há destaque prévio.";
+        observacaoNSC = `${fraseDestaque} ${fraseRessalva}`.trim();
+
+    } else {
+        // Caso PARCIAL 
+        percentualNSC = percInstrumento;
+        observacaoNSC = `Cessão parcial expressa (${formatarPercentualR12(percInstrumento)}%).`;
     }
 
-    // Regra Padrão se não for cessão exclusiva
-    if (!encerrouCalculo) {
-        let somaDestaquesJudiciais = 0;
-        if (inferiorEquivaleTotalidade) indicadorTotalidade = true;
-        
-        if (existeDestaquePrevio) somaDestaquesJudiciais += percDestaquePrevio;
-        if (deferidoNestaAnalise) somaDestaquesJudiciais += percDeferidoAgora;
+    // ========================================================
+    // B. SELEÇÃO DE TEXTOS (Regras R10 e R14)
+    // ========================================================
+    
+    // Objeto de Tags para Templates 
+    const tags = {
+        PERC_INSTRUMENTO: formatarPercentualR12(percInstrumento),
+        PERC_RESSALVA_CONTRATUAIS: formatarPercentualR12(percRessalva),
+        PERC_DEFERIDO_AGORA: formatarPercentualR12(percDeferidoAgora),
+        PERC_DESTAQUE_PREVIO: formatarPercentualR12(percDestaquePrevio),
+        EVENTO_COMUNICACAO_CESSAO: inputsUsuario.eventoComunicacao,
+        EVENTO_PEDIDO_DESTAQUE: inputsUsuario.eventoPedidoDestaque,
+        EVENTO_DESTAQUE_PREVIO: inputsUsuario.eventoDestaquePrevio,
+        PREFIXO_COMUNICACAO: getPrefixoEvento(inputsUsuario.eventoComunicacao),
+        PREFIXO_PEDIDO: getPrefixoEvento(inputsUsuario.eventoPedidoDestaque),
+        PREFIXO_PREVIO: getPrefixoEvento(inputsUsuario.eventoDestaquePrevio),
+        CEDENTE_NOME: (inputsUsuario.cedentesLegitimos || []).join(", ").replace(/, ([^,]*)$/, ' e $1'),
+        CESSIONARIO_NOME: inst.partes?.cessionarios?.map(c => c.nome).join(", ").replace(/, ([^,]*)$/, ' e $1') || "[CESSIONÁRIO]",
+        BENEFICIARIO_PEDIDO_DESTAQUE: inputsUsuario.beneficiarioDestaqueNovo,
+        BENEFICIARIO_DESTAQUE_PREVIO: inputsUsuario.beneficiarioDestaquePrevio,
+        NOMES_ADVOGADOS: inputsUsuario.beneficiarioDestaqueNovo
+    };
 
-        let deducaoSaldo = 0;
+    // Árvore de Decisão R14 (Base de Cálculo) 
+    let chaveR14 = "base_total_precatorio";
+    if (percInstrumento === 100 && tipoRessalva === "sem_previsao") chaveR14 = "base_conjunta_principal_honorarios";
+    else if (percInstrumento === 100) chaveR14 = (baseIA === "BASE_COTA_CEDENTE") ? "base_cota_cedente" : "base_total_precatorio";
+    else if (baseIA === "BASE_TOTAL_PRECATÓRIO" && inferiorEquivaleTotalidade) chaveR14 = "base_totalidade_cedente_confirmada";
+    else if (baseIA === "BASE_COTA_CEDENTE") chaveR14 = "base_cota_cedente";
 
-        if (indicadorTotalidade) {
-            // Se o usuário marcou para abater honorários (Opção 2) ou se há ressalva forte
-            if (tipoRessalva.includes("RESSALVA_COM_PERCENTUAL") && percRessalva > 0) {
-                if (somaDestaquesJudiciais > 0) {
-                    // Se o destaque nos autos bate com a ressalva do contrato (Divergência <= 2%)
-                    if (Math.abs(percRessalva - somaDestaquesJudiciais) <= 0.02) {
-                        deducaoSaldo = somaDestaquesJudiciais; // Abate o destaque comprovado
-                        observacaoNSC = `Totalidade da cota-parte cedida, abatido o destaque de honorários (${somaDestaquesJudiciais}%).`;
-                    } else {
-                        // Se divergem, aplica a escolha do usuário
-                        if (opcaoDivergencia === "1") {
-                            deducaoSaldo = somaDestaquesJudiciais; // Só abate o que tem nos autos
-                            observacaoNSC = `Abatido apenas o destaque consolidado nos autos (${somaDestaquesJudiciais}%). Ressalva ignorada por divergência.`;
-                        } else if (opcaoDivergencia === "2") {
-                            deducaoSaldo = percRessalva; // Abate a ressalva bruta
-                            observacaoNSC = `Abatida a ressalva contratual (${percRessalva}%).`;
-                        } else if (opcaoDivergencia === "3") {
-                            deducaoSaldo = percRessalva > somaDestaquesJudiciais ? percRessalva : somaDestaquesJudiciais;
-                            observacaoNSC = `Abatimento misto (Destaque/Ressalva: ${deducaoSaldo}%).`;
-                        }
-                    }
-                } else {
-                    // Se não há destaque judicial, mas há ressalva, abate a ressalva se o usuário permitir
-                    deducaoSaldo = (opcaoDivergencia === "2" || opcaoDivergencia === "3") ? percRessalva : 0; 
-                    observacaoNSC = deducaoSaldo > 0 ? `Abatida a ressalva contratual (${percRessalva}%) ante a ausência de destaque.` : `Ressalva ignorada (${percRessalva}%), sem destaque nos autos.`;
-                }
-            } else if (tipoRessalva === "QUITADOS_PELO_CESSIONARIO") {
-                deducaoSaldo = 0;
-                observacaoNSC = "Honorários contratuais quitados pelo cessionário (100% da cota cedida).";
-            } else {
-                // Sem ressalva, abate apenas os destaques reais (se houver)
-                deducaoSaldo = somaDestaquesJudiciais;
-                observacaoNSC = deducaoSaldo > 0 ? `Abatido o destaque de honorários (${deducaoSaldo}%).` : "Cessão de 100% da cota-parte, sem ônus identificados.";
-            }
-            
-            percentualNSC = 100 - deducaoSaldo;
-
+    // Árvore de Decisão R10 (Destaque de Honorários) 
+    let chaveR10 = "";
+    if (!["cessao_exclusiva_contratuais", "cessao_exclusiva_sucumbenciais", "cessao_exclusiva_periciais"].includes(tipoRessalva)) {
+        if (existeDestaquePrevio) {
+            if (deferidoNestaAnalise) {
+                chaveR10 = (percDeferidoAgora === percDestaquePrevio) ? "ja_destacados_com_req" : "nao_destacados_com_req_com_contrato";
+            } else chaveR10 = "ja_destacados_sem_req";
         } else {
-            // Se NÃO é a totalidade, o percentual cedido já é o líquido (Ex: cedeu exatos 30%)
-            percentualNSC = percInstrumento;
-            observacaoNSC = `Cessão parcial expressa (${percInstrumento}%).`;
+            if (deferidoNestaAnalise) chaveR10 = "nao_destacados_com_req_com_contrato";
+            else {
+                if (tipoRessalva === "quitados_pelo_cessionario") chaveR10 = "nao_destacados_sem_req_quitados";
+                else if (["ressalva_com_percentual_nao_cedidos", "ressalva_inclui_periciais_com_percentual_nao_cedidos", "ressalva_sem_percentual"].includes(tipoRessalva)) chaveR10 = "nao_destacados_sem_req_com_ressalva";
+                else chaveR10 = "nao_destacados_sem_req_sem_ressalva";
+            }
         }
     }
 
-    // Trava de Segurança Matemática
-    percentualNSC = Math.max(0, Math.round(percentualNSC * 100) / 100);
-
-    // ========================================================
-    // B. SELEÇÃO DE TEXTOS (Frases da Minuta)
-    // ========================================================
-    // Nota: Como não tenho o arquivo dicionarioFrases.js exato aqui, 
-    // estou passando os valores brutos para que a gerarMinutaHTML faça o texto,
-    // ou você pode manter a lógica do dicionario se ele já existir.
-    
-    let textosMinuta = {
-        baseCalculoLiteral: objEcon.base_calculo?.classificacao === "BASE_TOTAL_PRECATORIO" ? "sobre o valor total do precatório" : "sobre a cota-parte do cedente",
-        analiseRessalva: tipoRessalva,
-        analiseSuperpreferencia: inst.superpreferencia?.status || "SEM_PREVISAO"
+    const textosMinuta = {
+        basePerc: preencherTemplate(DicionarioFrases.REL_BASE_PERC_INSTRUMENTO[chaveR14], tags),
+        ressalva: preencherTemplate(DicionarioFrases.REL_TIPO_RESSALVA[tipoRessalva], tags),
+        superpreferencia: preencherTemplate(DicionarioFrases.REL_SUPERPREFERENCIA[inst.superpreferencia?.status || "sem_previsao"], tags),
+        reqDestaque: preencherTemplate(DicionarioFrases.REL_REQUERIMENTO_DESTAQUE[deferidoNestaAnalise ? "sim" : "nao"], tags),
+        decisaoDestaque: chaveR10 ? preencherTemplate(DicionarioFrases.DEC_DESTAQUE_HONORARIOS[chaveR10], tags) : ""
     };
 
-    // ========================================================
-    // C. DADOS DA TABELA NSC (Para gerarTabelaNSCHTML.js)
-    // ========================================================
-    // Pega o nome do cessionário do JSON
-    const cessionarios = inst.partes?.cessionarios || [];
-    const nomeCessionario = cessionarios.map(c => c.nome).join(", ").replace(/, ([^,]*)$/, ' e $1') || "[CESSIONÁRIO]";
-
-    // Cria uma linha na tabela NSC para cada cedente APROVADO pelo usuário
-    const linhasNSC = cedentesAprovados.map(nomeCedente => ({
-        data: inputsUsuario.dataComunicacao || "[DATA]",
-        tipo: "Cessão",
-        percentual: percentualNSC,
-        de: nomeCedente,
-        para: nomeCessionario,
-        evento: inputsUsuario.eventoInstrumento || "-",
-        observacao: observacaoNSC
-    }));
-
+    // 3. Dados para a Tabela NSC 
     const dadosTabela = {
-        numero: extracaoIA?.metadados_precatorio?.processo_eproc || "[NÚMERO]", 
-        linhasNSC: linhasNSC
+        numero: extracaoIA?.metadados_precatorio?.processo_eproc || "[NÚMERO]",
+        natureza: extracaoIA?.metadados_precatorio?.natureza || "[NATUREZA]",
+        vencimento: extracaoIA?.metadados_precatorio?.vencimento || "[ANO]",
+        devedor: extracaoIA?.metadados_precatorio?.devedor || "[DEVEDOR]",
+        linhasNSC: (inputsUsuario.cedentesLegitimos || []).map(nome => ({
+            data: inputsUsuario.dataComunicacao || "[DATA]",
+            tipo: "Cessão",
+            percentual: formatarPercentualR12(percentualNSC),
+            de: nome,
+            para: tags.CESSIONARIO_NOME,
+            evento: inputsUsuario.eventoInstrumento || "-",
+            observacao: observacaoNSC
+        }))
     };
 
     return { textos: textosMinuta, tabela: dadosTabela };

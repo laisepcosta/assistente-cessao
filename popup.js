@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const tabelaText = document.getElementById('outputTabela').value;
             
             // Junta os dois textos colocando duas quebras de linha (<br><br>) entre eles
-            const textoCombinado = minutaText + "<br><br>" + tabelaText;
+            const textoCombinado = minutaText + tabelaText;
             
             navigator.clipboard.writeText(textoCombinado);
             

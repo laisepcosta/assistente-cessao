@@ -25,21 +25,25 @@ const DicionarioFrases = {
         nao_recebida: "Nos termos pactuados, o(s) cedente(s) declara(m) não ter(em) recebido qualquer adiantamento relativo à parcela superpreferencial.",
         ja_recebida: "Nos termos pactuados, o(s) cedente(s) declara(m) o prévio recebimento de adiantamento relativo à parcela superpreferencial."
     },
+    REL_REQUERIMENTO_DESTAQUE: {
+        nao: "(omitido)",
+        sim: "Ademais, {{PREFIXO_PEDIDO}} {{EVENTO_PEDIDO_DESTAQUE}}, há requerimento de destaque de honorários advocatícios contratuais, no percentual de <strong>{{PERC_DEFERIDO_AGORA}}%</strong>, em favor de <strong>{{BENEFICIARIO_PEDIDO_DESTAQUE}}</strong>."
+    },
     DEC_DESTAQUE_HONORARIOS: {
         ja_destacados_sem_req: "Consta, {{PREFIXO_PREVIO}} {{EVENTO_DESTAQUE_PREVIO}}, destaque de honorários advocatícios contratuais no percentual de <strong>{{PERC_DESTAQUE_PREVIO}}%</strong>, em favor de <strong>{{BENEFICIARIO_DESTAQUE_PREVIO}}</strong>.",
-        
+
         ja_destacados_com_req: "Quanto ao requerimento de destaque, consta, {{PREFIXO_PREVIO}} {{EVENTO_DESTAQUE_PREVIO}}, destaque de honorários advocatícios contratuais no percentual de <strong>{{PERC_DESTAQUE_PREVIO}}%</strong>, em favor do(s) Requerente(s). Assim, indefiro o pedido.",
-        
+
         nao_destacados_com_req_com_contrato: "Quanto ao requerimento de destaque, presentes os pressupostos do art. 8º, §3º, da Resolução n.° 303/2019 do CNJ e do art. 22, §4º, da Lei n.º 8.906/94 (EOAB), <strong>REGISTRE(M)-SE {{BENEFICIARIO_PEDIDO_DESTAQUE}}</strong> como beneficiário(s) dos referidos honorários.",
-        
+
         nao_destacados_com_req_sem_contrato: "Quanto ao requerimento de destaque, ausente o instrumento exigido pelo art. 8º, §3º, da Resolução n.º 303/2019 do CNJ e pelo art. 22, §4º, da Lei n.º 8.906/94 (EOAB), INDEFIRO, por ora, o pedido.",
-        
+
         nao_destacados_sem_req_com_ressalva: "Não há registro de destaque de honorários advocatícios contratuais nos autos. O destaque depende de requerimento expresso, devidamente instruído com o respectivo instrumento, protocolado antes da ordem de pagamento, nos termos do art. 22, §4º, da Lei n.º 8.906/94, c/c o art. 8º, §3º, da Resolução n.° 303/2019 do CNJ.",
-        
+
         nao_destacados_sem_req_sem_ressalva: "Não há registro de destaque de honorários advocatícios contratuais nos autos.",
-        
+
         nao_destacados_com_req_quitados: "Quanto ao requerimento de destaque, uma vez que os honorários foram quitados diretamente pelo(s) cessionário(s), conforme pactuado, resta prejudicada a análise do pedido.",
-        
+
         nao_destacados_sem_req_quitados: "Quanto à quitação dos honorários contratuais, uma vez que não houve registro de destaque prévio, nada há a prover."
     }
 };
