@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Assistente - Cessão de Crédito",
+  "version": "1.0",
+  "description": "Gera a Certidão de Conferência, Minuta e Tabela NSC num painel fixo.",
+  "permissions": [
+    "sidePanel",
+    "clipboardWrite"
+  ],
+  "action": {
+    "default_title": "Abrir Assistente de Cessão",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
