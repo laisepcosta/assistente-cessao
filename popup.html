@@ -21,14 +21,47 @@
       <hr style="border: 0; border-top: 1px solid #ddd; margin-bottom: 20px;">
 
       <fieldset>
-        <legend>A. Identificação do Processo (IA)</legend>
-        <label class="label-mini">NÚMERO DO PRECATÓRIO (EPROC) - Bloqueado</label>
-        <input type="text" id="numPrecatorioReal" readonly
-          style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+        <legend>A. Identificação do Precatório</legend>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <div style="flex: 1.5;">
+            <label class="label-mini">NÚMERO (GV)</label>
+            <input type="text" id="numPrecatorioReal" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+          <div style="flex: 1;">
+            <label class="label-mini">NATUREZA</label>
+            <input type="text" id="naturezaPrec" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+          <div style="flex: 1;">
+            <label class="label-mini">VENCIMENTO</label>
+            <input type="text" id="vencimentoPrec" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1;">
+            <label class="label-mini">PROCESSO ORIGINÁRIO</label>
+            <input type="text" id="procOriginario" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+          <div style="flex: 1;">
+            <label class="label-mini">PROCESSO SEI</label>
+            <input type="text" id="procSei" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+          <div style="flex: 1;">
+            <label class="label-mini">EPROC</label>
+            <input type="text" id="procEproc" readonly
+              style="background-color: #e9ecef; color: #495057; cursor: not-allowed;">
+          </div>
+        </div>
       </fieldset>
 
       <fieldset>
-        <legend>B. Eventos da Cessão (Manual)</legend>
+        <legend>B. Eventos da Cessão</legend>
         <div style="display: flex; gap: 8px;">
           <div style="flex: 1;"><label class="label-mini">EV. COMUNICAÇÃO</label><input type="text"
               id="eventoComunicacaoCessao"></div>
@@ -44,12 +77,26 @@
 
         <div class="checkbox-group">
           <input type="checkbox" id="existeDestaquePrevio">
-          <label for="existeDestaquePrevio">Destaque JÁ ANOTADO (Histórico)</label>
+          <label for="existeDestaquePrevio" style="color: #0056b3; font-weight: bold;">Destaque JÁ ANOTADO
+            (Histórico)</label>
         </div>
-        <div id="divDestaquePrevio" class="hidden" style="padding-left:10px; border-left:2px solid #0056b3;">
-          <input type="text" id="beneficiarioDestaquePrevio" placeholder="Nome do Advogado/Sociedade">
-          <input type="number" id="percDestaquePrevio" placeholder="%">
-          <input type="text" id="eventoDestaquePrevio" placeholder="Evento">
+
+        <div id="divDestaquePrevio" class="hidden"
+          style="padding: 10px; margin-bottom: 15px; border-left: 3px solid #0056b3; background-color: #f8fbff;">
+          <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+            <div style="flex: 2;">
+              <label class="label-mini">BENEFICIÁRIO ANTERIOR</label>
+              <input type="text" id="beneficiarioDestaquePrevio" placeholder="Nome do Advogado/Sociedade">
+            </div>
+            <div style="flex: 0.5;">
+              <label class="label-mini">%</label>
+              <input type="number" id="percDestaquePrevio" placeholder="0">
+            </div>
+            <div style="flex: 1;">
+              <label class="label-mini">EVENTO</label>
+              <input type="text" id="eventoDestaquePrevio" placeholder="Ev.">
+            </div>
+          </div>
         </div>
 
         <div class="checkbox-group" style="margin-top:10px;">
@@ -57,23 +104,76 @@
           <label for="deferidoNestaAnalise" style="color: #28a745; font-weight: bold;">Destaque NOVO (A ser
             deferido)</label>
         </div>
-        <div id="divDestaqueNovo" class="hidden" style="padding-left:10px; border-left:2px solid #28a745;">
-          <label class="label-mini">BENEFICIÁRIO</label>
-          <input type="text" id="beneficiarioDestaqueNovo">
-          <div style="display: flex; gap: 8px;">
-            <div style="flex: 1;"><label class="label-mini">% PEDIDO</label><input type="number" id="percDeferidoAgora">
-            </div>
-            <div style="flex: 1;"><label class="label-mini">EV. PEDIDO</label><input type="text"
-                id="eventoPedidoDestaque"></div>
+
+        <div id="divDestaqueNovo" class="hidden"
+          style="padding: 10px; border-left: 3px solid #28a745; background-color: #f4fff6;">
+          <div style="margin-bottom: 8px;">
+            <label class="label-mini">BENEFICIÁRIO ATUAL</label>
+            <input type="text" id="beneficiarioDestaqueNovo">
           </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="flex: 1;">
+              <label class="label-mini">% PEDIDO</label>
+              <input type="number" id="percDeferidoAgora">
+            </div>
+            <div style="flex: 1;">
+              <label class="label-mini">EV. PEDIDO</label>
+              <input type="text" id="eventoPedidoDestaque">
+            </div>
+          </div>
+
           <div style="display: flex; gap: 8px;">
-            <div style="flex: 1;"><label class="label-mini">EV. CONTRATO</label><input type="text"
-                id="eventoContratoPedido"></div>
-            <div style="flex: 1;"><label class="label-mini">DATA PEDIDO</label><input type="text"
-                id="dataPedidoDestaque"></div>
+            <div style="flex: 1;">
+              <label class="label-mini">EV. CONTRATO</label>
+              <input type="text" id="eventoContratoPedido">
+            </div>
+            <div style="flex: 1;">
+              <label class="label-mini">DATA PEDIDO</label>
+              <input type="text" id="dataPedidoDestaque">
+            </div>
+          </div>
+
+        </div>
+
+        <div id="painelAlertaDestaque" class="hidden"
+          style="margin-top: 15px; padding: 12px; border-radius: 6px; border: 1px solid #dc3545; background-color: #fff5f5;">
+
+          <div id="msgAlertaUnificada" style="color: #721c24; font-weight: bold; font-size: 13px; margin-bottom: 10px;">
+          </div>
+
+          <div id="acoesAlerta" style="border-top: 1px solid #f5c6cb; margin-top: 10px; padding-top: 10px;">
+
+            <div id="areaCheckPerda"
+              style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding-top: 10px;">
+
+              <input type="checkbox" id="certificarPerdaObjeto"
+                style="margin: 0; width: auto; height: auto; flex-shrink: 0; cursor: pointer;">
+
+              <label for="certificarPerdaObjeto"
+                style="margin: 0; padding: 0; text-align: left; font-size: 12px; color: #721c24; width: auto; flex-grow: 1; cursor: pointer;">
+                Certifico que o pedido novo <strong>perdeu o objeto</strong> por duplicidade.
+              </label>
+
+            </div>
+
+            <div id="areaDecisaoDivergencia" class="hidden">
+              <label class="label-mini" style="color: #dc3545; font-weight: bold; display: block; margin-bottom: 4px;">
+                COMO DESEJA TRATAR A DIVERGÊNCIA?
+              </label>
+              <select id="opcaoDivergencia"
+                style="width: 100%; border: 1px solid #dc3545; padding: 4px; border-radius: 4px;">
+                <option value="INTIMAR">Intimar partes para esclarecer</option>
+                <option value="LIMITAR">Limitar ao teto da ressalva</option>
+                <option value="IGNORAR">Manter conforme pedido (erro material)</option>
+              </select>
+            </div>
           </div>
         </div>
+
       </fieldset>
+
+
 
       <fieldset id="sectionLegitimidade">
         <legend>D. Legitimidade dos Cedentes</legend>
@@ -98,7 +198,7 @@
   </div>
 
   <div class="step-container hidden" id="passo2">
-    <h2>2. Conferência de Dados (R4)</h2>
+    <h2>2. Certidão de Conferência</h2>
 
     <div id="tabelaCertidaoVisual" style="max-height: calc(100vh - 180px); overflow-y: auto; border: 1px solid #eee;">
     </div>
